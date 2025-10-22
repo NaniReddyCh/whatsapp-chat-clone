@@ -1,3 +1,9 @@
+"""Authentication routes for user registration and login.
+
+This module implements JWT-based authentication with bcrypt password hashing.
+Provides endpoints for user registration, login, and token management.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
@@ -5,7 +11,6 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
 import os
-
 from models import UserCreate, UserLogin, UserResponse, Token, TokenData
 from main import db
 
@@ -60,9 +65,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 # Routes
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
-    # Check if user already exists
+    # Check if email already exists
     existing_user = await db.users.find_one({"email": user.email})
     if existing_user:
         raise HTTPException(
@@ -86,6 +91,7 @@ async def register(user: UserCreate):
     
     result = await db.users.insert_one(user_dict)
     created_user = await db.users.find_one({"_id": result.inserted_id})
+    
     return created_user
 
 @router.post("/login", response_model=Token)
@@ -103,6 +109,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(
         data={"sub": user["email"]}, expires_delta=access_token_expires
     )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
